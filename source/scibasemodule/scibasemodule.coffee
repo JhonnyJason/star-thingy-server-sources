@@ -109,3 +109,5 @@ export prepareAndExpose = (middleWare, leRoutes, lePort = 3333) ->
 export onWebsocketConnect = (wsRoute, func) ->
     app.ws(wsRoute, func)
     return
+
+export getWSHandle = -> WS
