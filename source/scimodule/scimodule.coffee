@@ -19,20 +19,51 @@ import  *  as sciBase from "./scibasemodule.js"
 
 #endregion
 
+clientId = 0
+
+
+############################################################
+class SocketConnection 
+    constructor: (@socket, @clientId) ->
+        # preseve that "this" is this class
+        self = this
+        @socket.onmessage = (evnt) -> self.onMessage(evnt)
+        @socket.onclose = (evnt) -> self.onDisconnect(evnt)
+        log "#{@clientId} connected!"
+
+    onMessage: (evnt) ->
+        log "onMessage: #{@clientId}"
+        return
+
+    onDisconnect: (evnt) ->
+        log "onDisconnect: #{@clientId}"
+        return
+
+
 ############################################################
 routes = {
     test: (req, res) ->
         olog req.body
-        res.send({cargo:"pong"})
+        responseObj = {cargo:"pong"}
+        response = JSON.stringify(responseObj)
+        res.end(response)
 }
 
-authenticate = -> true
+authenticate = (req, res, next) -> next()
+
+onMessage = (message) -> log message
+
+onConnect = (socket, req) ->
+    conn = new SocketConnection(socket, "#{clientId}")
+    clientId++
+    return
 
 ############################################################
 export prepareAndExpose = ->
     log "scimodule.prepareAndExpose"
-    handlers.setService(this)
-    sciBase.prepareAndExpose(authenticate, routes)
+    # handlers.setService(this)
+    sciBase.prepareAndExpose(null, routes)
+    sciBase.onWebsocketConnect("/", onConnect)
     return
 
 ############################################################
