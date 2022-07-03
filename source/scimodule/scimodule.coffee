@@ -55,6 +55,7 @@ class SocketConnection
                 when "setuuid" then @setUUID(postCommand)
                 when "to" then messageTo(postCommand)
                 when "getalluuids" then @socket.send("alluids #{Object.keys(uuidToConnection)}")
+                when "sdp" then forwardSDPTo(postCommand)
                 else throw new Error("unknown command: #{command}")
 
         catch err then log err
@@ -65,9 +66,8 @@ class SocketConnection
         try
             delete clientIdtoUUID[@clientId]
             delete uuidToConnection[@uuid]
-            for uuid,connection of uuidToConnection when uuid != @uuid
-               connection.sendMessage("uuidremoved #{@uuid}")
-             
+            sendToAll("alluids #{Object.keys(uuidToConnection)}")
+
         catch err then log err
         return
 
@@ -80,16 +80,41 @@ class SocketConnection
         clientIdtoUUID[@clientId] = uuid
         uuidToConnection[uuid] = this
 
-        for uuid,connection of uuidToConnection when uuid != @uuid
-            connection.sendMessage("uuidadded #{@uuid}")
-
+        sendToAll("alluids #{Object.keys(uuidToConnection)}")
         return
     
     sendMessage: (message) -> @socket.send(message)
 
 
-############################################################
 
+############################################################
+forwardSDPTo = (content) ->
+    uuidEnd = content.indexOf(" ")
+    uuid = content.substring(0, uuidEnd)
+    sdpString = content.substring(uuidEnd).trim()
+    message = "sdp #{sdpString}"
+    if !validateUUID(uuid) then throw new Error("invalid UUID: " + uuid)
+    uuidToConnection[uuid].sendMessage(message)
+    return
+    
+messageTo = (content) ->
+    log "messageTo"
+    keyEnd = content.indexOf(" ")
+    key = content.substring(0, keyEnd)
+    message = content.substring(keyEnd).trim()
+    if validateUUID(key) then sendToUUID(key, "chat #{message}")
+    else if key == "all" then sendToAll("chat #{message}")
+    else throw new Error("invalid key for messageTo: #{key}")
+    return
+
+sendToUUID = (uuid, message) ->
+    uuidToConnection[uuid].sendMessage(message)
+    return
+
+sendToAll = (message) ->
+    for uuid,connection of uuidToConnection
+        connection.sendMessage(message)
+    return
 
 ############################################################
 routes = {
